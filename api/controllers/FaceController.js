@@ -96,6 +96,10 @@ module.exports = {
 						//Decode base64 image, do a for loop for number of faces, etc.
 						//
 						recognizeHelper(user, req.body.image, req.body.imageformat, function(err, name){
+							if(req.body.trackingid)
+							{
+								//attach that to JSON
+							}
 							res.send(name);
 						});
 					}

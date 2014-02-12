@@ -2,7 +2,7 @@
   "name": "facerec-server",
   "private": true,
   "version": "0.0.0",
-  "description": "a Sails application",
+  "description": "A Face Recognition System using the Sails framework",
   "dependencies": {
     "sails": "0.9.8",
     "grunt": "0.4.1",
@@ -19,6 +19,6 @@
   },
   "main": "app.js",
   "repository": "",
-  "author": "",
-  "license": ""
+  "author": "Charles Wang",
+  "license": "MIT LICENSE"
 }

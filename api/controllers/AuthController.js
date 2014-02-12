@@ -101,29 +101,28 @@ module.exports = {
 	},
 
 	logout:function(req,res){
+		//Check if the user has session
 		if(req.session.id || req.body.session)
 		{
+			//Take whichever session as access token
 			var atoken;
 			if(req.session.id)
 				atoken = req.session.id;
 			else			
 				atoken = req.body.session;
-				
+			
+			//Check if the access token exists
 			AccessToken.findOneByToken(atoken)
 			.done(function(err, token){
-				if(err)
-				{
-					return res.send('Error');
-				}
+				if(err) { return res.send('Error'); }
 				else
 				{
 					if(token)
 					{
+						//Delete the access token from the Database
 						token.destroy(function(err){
-							if(err)
-								return res.send('Error');
-							else
-								return res.send('logout');
+							if(err) { return res.send('Error'); }
+							else { return res.send('logout'); }
 						});	
 					}
 					else
@@ -140,7 +139,7 @@ module.exports = {
 		if(req.body.username && req.body.password && 
 			req.body.firstname && req.body.lastname && req.body.email)
 		{
-
+			//Create a user with these fields
 			User.create({
 				username:  req.body.username,
 				password:  req.body.password,
@@ -151,24 +150,12 @@ module.exports = {
 				group:     'admin',
 			})
 			.done(function(err, user){			
-				if(err)
-				{
-					console.log(err);
-					return res.json(status.SignUpError.message, status.SignUpError.code);
-				}
-				if(!user)
-				{
-					return res.json(status.SignUpError.message, status.SignUpError.code);
-				}
-				else 
-				{
-					return res.json(status.SignUpSuccess.message, status.SignUpSuccess.code);
-				}
+				if(err)   { return res.json(status.SignUpError.message, status.SignUpError.code);     }
+				if(!user) { return res.json(status.SignUpError.message, status.SignUpError.code);     }
+				else      { return res.json(status.SignUpSuccess.message, status.SignUpSuccess.code); }
 			});			
 		}
-		else{
-			return res.json(status.UnknownError.message, status.UnknownError,code);
-		}
+		else{ return res.json(status.UnknownError.message, status.UnknownError,code); }
 	},
   /**
    * Overrides for the settings in `config/controllers.js`
@@ -179,13 +166,11 @@ module.exports = {
   
 };
 
+//This is a helper function that validates the password
 function validate(req, res, user, password)
 {
 	user.validatePassword(password, function(err, result){
-		if(err)
-		{
-			return res.json(status.UnknownError.message, status.UnknownError.code);
-		}
+		if(err) { return res.json(status.UnknownError.message, status.UnknownError.code); }
 		if(result)
 		{
 			//Using UTC Time
