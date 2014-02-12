@@ -72,8 +72,38 @@ module.exports = {
 					}
 				});
 			}
+		else
+		{
+			return res.send('Error');
+		}
 	},
 	
+	recognize:function(req,res){
+		if(req.body.username && req.body.image && req.body.imageformat)
+		{
+			username = req.body.username.toLowerCase();
+			User.findOneByUsername(username)
+			.done(function(err, user){
+				if(err)
+				{
+					if(err || !user)
+					{
+						return res.send('Error');
+					}
+					else
+					{
+						//TODO pass in already converted image
+						//Decode base64 image, do a for loop for number of faces, etc.
+						//
+						recognizeHelper(user, req.body.image, req.body.imageformat, function(err, name){
+							res.send(name);
+						});
+					}
+				}
+			});
+			
+		}
+	},
 	
 
   /**
@@ -85,22 +115,165 @@ module.exports = {
   
 };
 
+
+//Initialize FaceRecognizer variables
+var eigenFaceRecognizer = cv.FaceRecognizer.createEigenFaceRecognizer();
+var fisherFaceRecognizer = cv.FaceRecognizer.createFisherFaceRecognizer();
+var lbphFaceRecognizer = cv.FaceRecognizer.createLBPHFaceRecognizer();	
+
+//Predict
+function predict(user, pgm_image, callback)
+{
+	//Find the most recent one
+	//TODO check this
+	TrainingData.findAllbyUserId(user.id)
+	.done(function(err, datum){
+		if(err) { return callback(err, null); }
+		else
+		{
+			if(datum.length > 0){
+				trainingData = datum[0];
+				eigenFaceRecognizer.loadSync(trainingData.EigenFace_paths);
+				fisherFaceRecognizer.loadSync(trainingData.FisherFace_path);
+				lbphFaceRecognizer.loadSync(trainingData.LBPHFace_path);
+				
+				cv.readImage(pgm_image, function(err, img){
+					if(err) { return callback(err, null); }
+					eigR  = eigenFaceRecognizer.predictSync(im).id;
+					fishR = fisherFaceRecognizer.predictSync(im).id;
+					lbphR = lbphFaceRecognizer.predictSync(im).id;
+					
+					Person.findOneById(eigR)
+					.done(function(err, eperson){
+						Person.findOneById(fishR)
+						.done(function(err, fperson){
+							Person.findOneById(err, lperson)
+							.done(function(err, lperson){
+								console.log('Eigenface predicted ' + eperson.fullname());
+								console.log('Fisherface predicted ' + fperson.fullname());
+								console.log('LBPHface predicted ' + lperson.fullname());
+								//Majority
+								if(eigR == fishR && eigR == lbphR && lbphR == fishR)
+								{
+									callback(err, fperson.fullname());
+									//return fishR
+								}
+								else if(eigR == fishR)
+								{
+									callback(err, fperson.fullname());
+									//return fishR
+								}
+								else if(eigR == lbphR)
+								{
+									callback(err, lperson.fullname());
+									//return lbphR
+								}
+								else if(fishR == lbphR)
+								{
+									callback(err, fperson.fullname());
+									//return fishR;
+								}
+								else
+								{
+									callback(err, fperson.fullname());
+									//return fishR
+								}
+							});
+						});
+					});
+					
+				});
+			}
+			else{
+				return callback(err, null);
+			}
+		}
+	});
+		
+}
+
+function recognizeHelper(user, image, imageformat, callback)
+{
+	err = null;
+	//First decode the base64 image
+	//Save that image
+	//TODO use config
+	tmpPath = './.tmp';
+	if(!fs.existsSync(tmpPath))
+	{
+		fs.mkdir(tmpPath);
+	}
+	filename = hashFilename();
+	imageFileLocation = tmpPath + filename + imageformat;
+	convertToPGM(imageFileLocation, function(err){
+		if(err) { return callback(err, null); }
+		else
+		{
+			predict(user, tmpPath + hashFilename + '.pgm', function(err, name){
+				if(err){ callback(err, null); }
+				else{ callback(err, name) }
+			});
+		}
+	});
+}
+
+//Training Implementation
+function trainHelper(faces, user, callback)
+{
+	console.log('here');
+	var trainingData = [];
+	for(i = 0; i < faces.length; i++){
+		trainingData.push([faces[i].PersonId, faces[i].image_path]);		
+		console.log(faces[i].PersonId + ' ' + faces[i].image_path);
+	}
+	var date = new Date();
+	var n = date.toISOString();
+
+	var shasum = crypto.createHash('sha1');
+	hash_fname_ei = shasum.update(n+'_e').digest('hex') + '.xml';
+	console.log(faceDataDirectory + user.username + '/' + hash_fname_ei);
+    eigenFaceRecognizer.trainSync(trainingData);
+	console.log('Error here 5');	
+    eigenFaceRecognizer.saveSync(faceDataDirectory + user.username + '/' + hash_fname_ei);
+
+	console.log('Error here 1');
+	shasum = crypto.createHash('sha1');
+	hash_fname_fi = shasum.update(n+'_f').digest('hex') + '.xml';
+    fisherFaceRecognizer.trainSync(trainingData);
+    fisherFaceRecognizer.saveSync(faceDataDirectory + user.username + '/' + hash_fname_fi);
+
+	console.log('Error here 2');
+	shasum = crypto.createHash('sha1');	
+	hash_fname_lb = shasum.update(n+'_l').digest('hex') + '.xml';
+    lbphFaceRecognizer.trainSync(trainingData);
+    lbphFaceRecognizer.saveSync(faceDataDirectory + user.username + '/' + hash_fname_lb);
+	
+	TrainingData.create({
+		EigenFace_path : faceDataDirectory + user.username + '/' + hash_fname_ei,
+		FisherFace_path: faceDataDirectory + user.username + '/' + hash_fname_fi,
+		LBPHFace_path  : faceDataDirectory + user.username + '/' + hash_fname_lb,
+		UserId:user.id
+	})
+	.done(function(err, trainingdata){
+		return callback(err);
+	});
+}
+
 function train(user, callback)
 {
 	err = null;
 	//Initialize Empty Faces
 	faces = [];
 	//Check User Group
-	if(user.group == admin)
+	if(user.group === 'admin')
 	{
 		Face.findAll()
 		.done(function(err, faces){
-			trainHelper(faces, function(error){
+			trainHelper(faces, user, function(error){
 				if(error){
 					err = 'bad';
-					callback(err);
-					return
-				}				
+					return callback(err);
+				}
 			});	
 		});
 	}
@@ -109,12 +282,11 @@ function train(user, callback)
 		//TODO fix this
 		//Find by friends.id, user.id, 
 		Face.findByUserId(user.id)
-		.done(function(err, faces){
+		.done(function(err, user, faces){
 			trainHelper(faces, function(error){
 				if(error){
 					err = 'bad';
-					callback(err);
-					return;
+					return callback(err);
 				}
 			});
 		});
@@ -149,25 +321,14 @@ function addHelper(user, person, base64_image, imageformat, callback)
 	
 	//Write the image file to the person's folder and decode the image using base64								
 	fs.writeFile(imageFileNameWithoutExt + req.body.imageformat, req.body.image, 'base64', function(err){
-		if(err)
-		{
-			return callback(err);
-		}
-		//TODO Use opencv to crop the face better and rotate
-		
-		//Convert the image to pgm, resize, and save
-		//TODO the gm argument can change
+		if(err){ return callback(err); }
 		else
 		{
-			gm(imageFileNameWithoutExt + imageformat)
-			.setFormat('pgm')
-			.resize(92, 112, "!")
-			.write(imageFileNameWithoutExt + 'pgm',function(err){
-				//If error occured when writing the file stop
-				if(err)
-				{
-					return callback(err);
-				}
+			//TODO the gm argument can change
+			//TODO Use opencv to crop the face better and rotate
+			//Convert the image to pgm, resize, and save
+			convertToPGM(imagepath, imageformat, function(err){
+				if(err){ return callback(err); }
 				else
 				{
 					Face.create({
@@ -177,10 +338,7 @@ function addHelper(user, person, base64_image, imageformat, callback)
 						image_path:ImageFileNameWithoutExt + imageformat,
 					})
 					.done(function(err, face){
-						if(err)
-						{
-							return callback(err);
-						}
+						if(err){ return callback(err); }
 						else
 						{
 							train(user, function(err){
@@ -209,4 +367,17 @@ function hashFilename()
 	var shasum = crypto.createHash('sha1');
 	return shasum.update(isoDate).digest('hex');
 }
+
+//Convert image to pgm
+function convertToPGM(imagepath, imageformat, callback)
+{
+	err = null;
+	gm(imagepath + imageformat)
+	.setFormat('pgm')
+	.resize(92, 112, "!")
+	.write(imagepath + '.pgm',function(err){
+		return callback(err);
+	});
+}
+
 
