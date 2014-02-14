@@ -19,27 +19,32 @@ var cv = require('opencv'); //opencv bindings
 var gm = require('gm'); //graphicsmagick
 var fs = require('fs'); //File System
 var crypto = require('crypto'); //Used for hashing filename
+var status = require('../services/StatusCode').status;
 
 module.exports = {
     
 	//add face to the database and perform training
 	add:function(req,res){
 		//First check the JSON includes the required fields
+		console.log("SERVER LOG: Access /faces/add");
 		if(req.body.username && req.body.image && req.body.imageformat
 			&& req.body.email)
-			{				
-				username = req.body.username;
+			{	
+				console.log("SERVER LOG: Finding Username");
+				username = req.body.username.toLowerCase();
 				User.findOneByUsername(username)
 				.done(function(err, user){
 					if(err || !user)
 					{
+						console.log("SERVER LOG: Cannot Find Username");
 						//If user does not exist
 						res.send('Error');
 					}
 					else
 					{
 						//If user was found proceed to the next step
-						email = req.body.email;
+						email = req.body.email.toLowerCase();
+						console.log("SERVER LOG: Finding a Person");
 						//Checking if the email exist in the user's people database
 						Person.findOne({
 							'email':email,
@@ -48,11 +53,13 @@ module.exports = {
 						.done(function(err, person){
 							if(err || !person)
 							{
+								console.log("SERVER LOG: Cannot Find a person");
 								//person does not exist
 								res.send('Error');
 							}
 							else
 							{
+								console.log("SERVER LOG: Perform Add Helper");
 								//This funciton has a callback
 								//This function hashes the filename, decode the base64 image, 
 								//save the image to the public image directory,	convert and resize the image the pgm,
@@ -60,11 +67,13 @@ module.exports = {
 								addHelper(user, person, req.body.image, req.body.imageformat, function(err){
 									if(err)
 									{
-										res.send('Error');										
+										console.log("SERVER LOG: Found Error");
+										res.send('Error');
 									}
 									else
 									{
-										res.send('Success');
+										console.log("SERVER LOG: Successfully Added and Trained");
+										res.send(status.FaceAddedSuccess.message, status.FaceAddedSuccess.code);
 									}
 								});
 							}
@@ -79,30 +88,55 @@ module.exports = {
 	},
 	
 	recognize:function(req,res){
+		console.log("SERVER LOG: Access /faces/recognize");
 		if(req.body.username && req.body.image && req.body.imageformat)
 		{
+			console.log("SERVER LOG: Finding User");
 			username = req.body.username.toLowerCase();
 			User.findOneByUsername(username)
 			.done(function(err, user){
 				if(err)
 				{
-					if(err || !user)
+					console.log("SERVER LOG: Error occurred");
+					return res.send('Error');
+				}
+				else if(!user)
+				{
+					console.log("SERVER LOG: Cannot find user");
+				}
+				else
+				{
+					//TODO pass in already converted image
+					//Decode base64 image, do a for loop for number of faces, etc.
+					//
+					
+					//Save that image
+					//TODO use config
+					console.log("SERVER LOG: Check tmp path exist");
+					tmpPath = './.tmp/';
+					if(!fs.existsSync(tmpPath))
 					{
-						return res.send('Error');
+						fs.mkdir(tmpPath);
 					}
-					else
-					{
-						//TODO pass in already converted image
-						//Decode base64 image, do a for loop for number of faces, etc.
-						//
-						recognizeHelper(user, req.body.image, req.body.imageformat, function(err, name){
-							if(req.body.trackingid)
-							{
-								//attach that to JSON
-							}
-							res.send(name);
+					
+					//for(int i = 0; i < # of faces; i++)
+					//{
+						console.log("SERVER LOG: Hash filename");
+						imageFileLocation = tmpPath + hashFilename();
+						console.log("SERVER LOG: Saving Image");							
+						fs.writeFile(imageFileLocation + req.body.imageformat, req.body.image, 'base64', function(err){
+							console.log("SERVER LOG: Go to recognizeHelper.");
+							recognizeHelper(user, imageFileLocation, req.body.imageformat, function(err, name){
+								if(req.body.trackingID)
+								{
+									return res.json({name:name ,trackingID:req.body.trackingID}, 200);
+								}
+								return res.json({name:name}, 200);
+							});
 						});
-					}
+					//}
+
+					
 				}
 			});
 			
@@ -123,25 +157,25 @@ module.exports = {
 //Initialize FaceRecognizer variables
 var eigenFaceRecognizer = cv.FaceRecognizer.createEigenFaceRecognizer();
 var fisherFaceRecognizer = cv.FaceRecognizer.createFisherFaceRecognizer();
-var lbphFaceRecognizer = cv.FaceRecognizer.createLBPHFaceRecognizer();	
+var lbphFaceRecognizer = cv.FaceRecognizer.createLBPHFaceRecognizer();
 
 //Predict
 function predict(user, pgm_image, callback)
 {
 	//Find the most recent one
 	//TODO check this
-	TrainingData.findAllbyUserId(user.id)
+	TrainingData.find({UserId:user.id})
 	.done(function(err, datum){
 		if(err) { return callback(err, null); }
 		else
 		{
 			if(datum.length > 0){
-				trainingData = datum[0];
-				eigenFaceRecognizer.loadSync(trainingData.EigenFace_paths);
+				trainingData = datum[datum.length - 1];
+				eigenFaceRecognizer.loadSync(trainingData.EigenFace_path);
 				fisherFaceRecognizer.loadSync(trainingData.FisherFace_path);
 				lbphFaceRecognizer.loadSync(trainingData.LBPHFace_path);
 				
-				cv.readImage(pgm_image, function(err, img){
+				cv.readImage(pgm_image, function(err, im){
 					if(err) { return callback(err, null); }
 					eigR  = eigenFaceRecognizer.predictSync(im).id;
 					fishR = fisherFaceRecognizer.predictSync(im).id;
@@ -151,7 +185,7 @@ function predict(user, pgm_image, callback)
 					.done(function(err, eperson){
 						Person.findOneById(fishR)
 						.done(function(err, fperson){
-							Person.findOneById(err, lperson)
+							Person.findOneById(lbphR)
 							.done(function(err, lperson){
 								console.log('Eigenface predicted ' + eperson.fullname());
 								console.log('Fisherface predicted ' + fperson.fullname());
@@ -198,24 +232,27 @@ function predict(user, pgm_image, callback)
 
 function recognizeHelper(user, image, imageformat, callback)
 {
+	console.log("SERVER LOG: Inside recognize helper");
 	err = null;
-	//First decode the base64 image
-	//Save that image
-	//TODO use config
-	tmpPath = './.tmp';
-	if(!fs.existsSync(tmpPath))
-	{
-		fs.mkdir(tmpPath);
-	}
-	filename = hashFilename();
-	imageFileLocation = tmpPath + filename + imageformat;
-	convertToPGM(imageFileLocation, function(err){
-		if(err) { return callback(err, null); }
+	console.log("SERVER LOG: Converting to PGM");
+	convertToPGM(image, imageformat, function(err){
+		if(err)
+		{
+			console.log("SERVER LOG: Error in converting");
+			return callback(err, null);
+		}
 		else
 		{
-			predict(user, tmpPath + hashFilename + '.pgm', function(err, name){
-				if(err){ callback(err, null); }
-				else{ callback(err, name) }
+			console.log("SERVER LOG: Entering Predict");
+			predict(user, image + '.pgm', function(err, name){
+				if(err)
+				{
+					callback(err, null);
+				}
+				else
+				{
+					callback(null, name)
+				}
 			});
 		}
 	});
@@ -223,60 +260,83 @@ function recognizeHelper(user, image, imageformat, callback)
 
 //Training Implementation
 function trainHelper(faces, user, callback)
-{
-	console.log('here');
+{	
+	console.log("SERVER LOG: Inside trainHelper");
 	var trainingData = [];
+	console.log("SERVER LOG: Looping through Faces and Loading to Vector");
 	for(i = 0; i < faces.length; i++){
-		trainingData.push([faces[i].PersonId, faces[i].image_path]);		
-		console.log(faces[i].PersonId + ' ' + faces[i].image_path);
+		//TODO Fix this later
+		trainingData.push([parseInt(faces[i].PersonId), faces[i].pgm_path]);
+		//console.log(faces[i].PersonId + ' ' + faces[i].pgm_path);
 	}
+
 	var date = new Date();
 	var n = date.toISOString();
+	
+	console.log("SERVER LOG: Creating Directory if not exist");
+	faceDataDirectory = './trainingdata/' + user.username + '/';
+	if(!fs.existsSync(faceDataDirectory))
+	{
+		fs.mkdir(faceDataDirectory);
+	}
 
+	console.log("SERVER LOG: Creating Eigenface training data.");
 	var shasum = crypto.createHash('sha1');
 	hash_fname_ei = shasum.update(n+'_e').digest('hex') + '.xml';
-	console.log(faceDataDirectory + user.username + '/' + hash_fname_ei);
     eigenFaceRecognizer.trainSync(trainingData);
-	console.log('Error here 5');	
-    eigenFaceRecognizer.saveSync(faceDataDirectory + user.username + '/' + hash_fname_ei);
+    eigenFaceRecognizer.saveSync(faceDataDirectory + hash_fname_ei);
 
-	console.log('Error here 1');
+
+	console.log("SERVER LOG: Creating Fisherface training data.");
 	shasum = crypto.createHash('sha1');
 	hash_fname_fi = shasum.update(n+'_f').digest('hex') + '.xml';
     fisherFaceRecognizer.trainSync(trainingData);
-    fisherFaceRecognizer.saveSync(faceDataDirectory + user.username + '/' + hash_fname_fi);
+    fisherFaceRecognizer.saveSync(faceDataDirectory + hash_fname_fi);
 
-	console.log('Error here 2');
+	console.log("SERVER LOG: Creating lbphface training data.");
 	shasum = crypto.createHash('sha1');	
 	hash_fname_lb = shasum.update(n+'_l').digest('hex') + '.xml';
     lbphFaceRecognizer.trainSync(trainingData);
-    lbphFaceRecognizer.saveSync(faceDataDirectory + user.username + '/' + hash_fname_lb);
+    lbphFaceRecognizer.saveSync(faceDataDirectory + hash_fname_lb);
 	
+	console.log("SERVER LOG: Training Data created.");
 	TrainingData.create({
-		EigenFace_path : faceDataDirectory + user.username + '/' + hash_fname_ei,
-		FisherFace_path: faceDataDirectory + user.username + '/' + hash_fname_fi,
-		LBPHFace_path  : faceDataDirectory + user.username + '/' + hash_fname_lb,
+		EigenFace_path : faceDataDirectory + hash_fname_ei,
+		FisherFace_path: faceDataDirectory + hash_fname_fi,
+		LBPHFace_path  : faceDataDirectory + hash_fname_lb,
 		UserId:user.id
 	})
 	.done(function(err, trainingdata){
+		console.log("SERVER LOG: in here.");
 		return callback(err);
 	});
 }
 
 function train(user, callback)
 {
+	console.log("SERVER LOG: Inside Training");
 	err = null;
 	//Initialize Empty Faces
 	faces = [];
-	//Check User Group
+	console.log("SERVER LOG: Checking user group");	
+	//Check User Group	
 	if(user.group === 'admin')
 	{
-		Face.findAll()
+		console.log("SERVER LOG: Finding All Faces");
+		Face.find()
 		.done(function(err, faces){
+			console.log("SERVER LOG: Finished Finding");
 			trainHelper(faces, user, function(error){
+					console.log("SERVER LOG: Return in train");
 				if(error){
+					console.log("SERVER LOG: Error in trainHelper");
 					err = 'bad';
 					return callback(err);
+				}
+				else
+				{
+					console.log("SERVER LOG: Sending null callback");
+					return callback(null);
 				}
 			});	
 		});
@@ -310,11 +370,14 @@ function emailToFolderName(m_email)
 */
 function addHelper(user, person, base64_image, imageformat, callback)
 {
+	console.log("SERVER LOG: Hashing Filename");
 	err = null;
 	//Hashing to a unique filename using time
 	hashedFileName = hashFilename();
 	//Make sure person's folder exist with name.
-	personImageFolderPath = './public/images/' + emailToFolderName(person.email);
+	personImageFolderPath = './assets/images/' + emailToFolderName(person.email);
+	
+	console.log("SERVER LOG: Checking Person's Path");
 	//TODO If not create a folder & add config
 	if(!fs.existsSync(personImageFolderPath))
 	{
@@ -323,36 +386,53 @@ function addHelper(user, person, base64_image, imageformat, callback)
 	imageFileNameWithoutExt = hashedFileName; //Improve naming
 	imageFileLocation = personImageFolderPath + '/' + imageFileNameWithoutExt; //ImageFileLocation
 	
+	console.log("SERVER LOG: Writing File to " + imageFileLocation);
 	//Write the image file to the person's folder and decode the image using base64								
-	fs.writeFile(imageFileNameWithoutExt + req.body.imageformat, req.body.image, 'base64', function(err){
-		if(err){ return callback(err); }
+	fs.writeFile(imageFileLocation + imageformat, base64_image, 'base64', function(err){
+		if(err)
+		{
+			console.log("SERVER LOG: Error in writing file!");
+			return callback(err); 
+		}
 		else
 		{
+			console.log("SERVER LOG: Convert PGM");
 			//TODO the gm argument can change
 			//TODO Use opencv to crop the face better and rotate
 			//Convert the image to pgm, resize, and save
-			convertToPGM(imagepath, imageformat, function(err){
-				if(err){ return callback(err); }
+			convertToPGM(imageFileLocation, imageformat, function(err){
+				if(err)
+				{
+					console.log("SERVER LOG: Error found in convertToPGM");
+					return callback(err);
+				}
 				else
 				{
+					console.log("SERVER LOG: Creating Face");
 					Face.create({
 						PersonId:person.id,
 						UserId:user.id,
-						pgm_path:imageFileNameWithoutExt + '.pgm',
-						image_path:ImageFileNameWithoutExt + imageformat,
+						pgm_path:imageFileLocation + '.pgm',
+						image_path:'/images/'+imageFileNameWithoutExt + imageformat,
 					})
 					.done(function(err, face){
-						if(err){ return callback(err); }
+						if(err)
+						{
+							console.log("SERVER LOG: Error in Creating Face");
+							return callback(err);
+						}
 						else
 						{
 							train(user, function(err){
 								if(err)
 								{
+									console.log("SERVER LOG: Error in Training");
 									return callback(err);
 								}
 								else
 								{
-									return;
+									console.log("SERVER LOG: Success in Training");
+									return callback(null);
 								}
 							});
 						}
@@ -375,7 +455,9 @@ function hashFilename()
 //Convert image to pgm
 function convertToPGM(imagepath, imageformat, callback)
 {
+	console.log("SERVER LOG: Inside convertToPGM");
 	err = null;
+	console.log(imagepath);
 	gm(imagepath + imageformat)
 	.setFormat('pgm')
 	.resize(92, 112, "!")

@@ -23,12 +23,13 @@ module.exports = {
 	**If the client does not have a session, it uses the username and current time as a token.
 	*/
 	login:function(req,res){
-				
+		console.log("SERVER LOG: login access");
 		username = req.body.username;
 		password = req.body.password;
 		//Check if the username and password is not null
 		if(username && password)
 		{
+			console.log("SERVER LOG: Parameters Found");
 			//lower case the username value
 			username = username.toLowerCase();
 			
@@ -36,37 +37,47 @@ module.exports = {
 			User.findOneByUsername(username)
 			.done(function(err, user){
 				if(err)
-				{					
+				{	
+					console.log("SERVER LOG: Unknown Error: User was not found?");
 					return res.json(status.UnknownError.message, status.UnknownError.code);
 				}
 				if(!user)
 				{
+					console.log("SERVER LOG: Login Error: User was not found?");
 					return res.json(status.LoginError.message, status.LoginError.code);
 				}
 				
+				console.log("SERVER LOG: Storing Session");
 				//Check Session and store it
 				var aToken;
 				if(req.session.id)
 				{
+					console.log("SERVER LOG: Using Session Token");
 					aToken = req.session.id
 				}
 				else
 				{
 					//If session does not exist, look for token in request body				
 					if(req.body.token)
+					{
+						console.log("SERVER LOG: Finding token in the json");
 						aToken = req.body.token;
+					}
 					else
-						res.send('Missing Token');
+						res.send('Missing Token');//TODO Add something here
 				}
 				console.log(aToken);
 				//Search for token in the database
+				console.log("SERVER LOG: Checking token in the database to check whether the user is already logged in");
 				AccessToken.findOne({token:aToken})
 				.done(function(err, access_token){				
 					//If it does not exist, validate the user
 					if(err || !access_token){
+						console.log("SERVER LOG: Token not found, validate the user");
 						return validate(req, res, user, password);
 					}
 					else{
+						console.log("SERVER LOG: Token existed, make the token expiration longer");
 						//If it exists, check the expiration and delete the AccessToken
 						var now = new Date();
 						var expiration = new Date(access_token.expiration);
@@ -75,19 +86,21 @@ module.exports = {
 							access_token.destroy(function(err){
 								if(!err){
 									//If no error proceed relogin and add new expiration
+									console.log("SERVER LOG: Recreating Token");
 									return validate(req, res, user, password);
 
 								}
 								else
 								{
-									return res.send('Unknown error');
+									return res.json(status.UnknownError.message, status.UnknownError.code);
 								}
 							});
 						}
 						else
 						{
 							//If not expired, finish
-							return res.send('Still Logged In');
+							console.log("SERVER LOG: Login Duplicate");
+							return res.json(status.LoginDuplicate.message, status.LoginDuplicate.code);
 						}
 					}
 				});
@@ -102,8 +115,10 @@ module.exports = {
 
 	logout:function(req,res){
 		//Check if the user has session
+		console.log("SERVER LOG: access logout");
 		if(req.session.id || req.body.session)
 		{
+			console.log("SERVER LOG: Checking Token");
 			//Take whichever session as access token
 			var atoken;
 			if(req.session.id)
@@ -114,20 +129,34 @@ module.exports = {
 			//Check if the access token exists
 			AccessToken.findOneByToken(atoken)
 			.done(function(err, token){
-				if(err) { return res.send('Error'); }
+				if(err)
+				{
+					console.log("SERVER LOG: Unknown Error " + err);
+					return res.json(status.UnknownError.message, status.UnknownError.code);
+				}
 				else
 				{
 					if(token)
 					{
 						//Delete the access token from the Database
+						console.log("SERVER LOG: Token Found and Destroying it");
 						token.destroy(function(err){
-							if(err) { return res.send('Error'); }
-							else { return res.send('logout'); }
+							if(err)
+							{
+								console.log("SERVER LOG: Unknown Error " + err);
+								return res.json(status.UnknownError.message, status.UnknownError.code);
+							}
+							else
+							{
+								console.log("SERVER LOG: Successfully Logged Out");
+								return res.json(status.LogoutSuccess.message, status.LogoutSuccess.code);
+							}
 						});	
 					}
 					else
 					{
-						return res.send('Error 11');
+						console.log("SERVER LOG: Cannot Logged Out because user is not logged in");
+						return res.json(status.LogoutFailed02.message, status.LogoutFailed02.code);
 					}
 				}
 			})
@@ -136,9 +165,11 @@ module.exports = {
 	},
 	
 	signup:function(req,res){
+		console.log("SERVER LOG: signup access");
 		if(req.body.username && req.body.password && 
 			req.body.firstname && req.body.lastname && req.body.email)
 		{
+			console.log("SERVER LOG: Creating User with username " + req.body.username);
 			//Create a user with these fields
 			User.create({
 				username:  req.body.username,
@@ -149,13 +180,33 @@ module.exports = {
 				email:     req.body.email,
 				group:     'admin',
 			})
-			.done(function(err, user){			
-				if(err)   { return res.json(status.SignUpError.message, status.SignUpError.code);     }
-				if(!user) { return res.json(status.SignUpError.message, status.SignUpError.code);     }
-				else      { return res.json(status.SignUpSuccess.message, status.SignUpSuccess.code); }
+			.done(function(err, user){	
+				if(err)
+				{
+					console.log("SERVER LOG: Signup Error Detected");
+					console.log("SERVER LOG: Ending singup");
+					return res.json(status.SignUpError.message, status.SignUpError.code);
+				}
+				if(!user)
+				{
+					console.log("SERVER LOG: Signup Error Detected");
+					console.log("SERVER LOG: Ending singup");
+					return res.json(status.SignUpError.message, status.SignUpError.code);
+				}
+				else
+				{
+					console.log("SERVER LOG: Signup Success Detected");
+					console.log("SERVER LOG: Ending singup");
+					return res.json(status.SignUpSuccess.message, status.SignUpSuccess.code); 
+				}
 			});			
 		}
-		else{ return res.json(status.UnknownError.message, status.UnknownError,code); }
+		else
+		{
+			console.log("SERVER LOG: Unknown Error Detected in signup");
+			console.log("SERVER LOG: Ending singup");
+			return res.json(status.UnknownError.message, status.UnknownError.code);
+		}
 	},
   /**
    * Overrides for the settings in `config/controllers.js`

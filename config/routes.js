@@ -43,6 +43,8 @@ module.exports.routes = {
   'post /people/register': 'PersonController.register',
   'get /people/view': 'PersonController.view',
   
+  'post /faces/add': 'FaceController.add',
+  'post /faces/recognize': 'FaceController.recognize',
 
   /*
   // But what if you want your home page to display

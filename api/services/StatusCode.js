@@ -17,21 +17,49 @@ module.exports = {
 		},
 
 		LoginSuccess:{
-			code:300,
+			code:200,
 			message:{
 				status:"Successfully Logged In."
 			}
 		},
+		
+		LoginDuplicate:{
+			code:200,
+			message:{
+				status:"User is already logged in."
+			}
+		},
+		
+		LogoutSuccess:{
+			code:200,
+			message:{
+				status:"Successfully logged out."
+			}
+		},
+		
+		LogoutFailed01:{
+			code:513,
+			message:{
+				status:"Failed to logout."
+			}
+		},
+		
+		LogoutFailed02:{
+			code:421,
+			message:{
+				status:"Not logged in."
+			}
+		},
 
 		SignUpSuccess:{
-			code:400,
+			code:201,
 			message:{
 				status:'Successfully Signed Up.'
 			}
 		},
 
 		SignUpError:{
-			code:400,
+			code:512,
 			message:{
 				status:'Failed to Sign Up.'
 			},
@@ -41,7 +69,28 @@ module.exports = {
 			email:{
 				message:'Email is already taken.'
 			}
-		}
+		},
+		
+		RegisterPersonSuccess:{
+			code:201,
+			message:{
+				status:'Successfully created person.'
+			}
+		},
+		
+		PersonAlreadyExist:{
+			code:200,
+			message:{
+				status:'This person already exist in your people list.'
+			}
+		},
+		
+		FaceAddedSuccess:{
+			code:201,
+			message:{
+				status:'Face has been added successfully!'
+			}
+		},
 	}
 
 };

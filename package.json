@@ -11,7 +11,9 @@
     "optimist": "0.3.4",
     "bcrypt": "~0.7.7",
     "opencv": "~0.4.0",
-    "gm": "~1.14.2"
+    "gm": "~1.14.2",
+    "sails-mysql": "~0.9.9",
+    "sails-mongo": "~0.9.7"
   },
   "scripts": {
     "start": "node app.js",

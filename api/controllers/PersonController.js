@@ -15,34 +15,57 @@
  * @docs        :: http://sailsjs.org/#!documentation/controllers
  */
 
+var status = require('../services/StatusCode').status;
+
 module.exports = {
     
   
 	register:function(req,res){
-		
+		console.log("SERVER LOG: register - person");
 		if(req.body.firstname && req.body.lastname 
 			&& req.body.email && req.body.username)
 			{
+				console.log("SERVER LOG: Finding user");
 				User.findOneByUsername(req.body.username.toLowerCase())
 				.done(function(err, user){
 					if(err || !user){
 						return res.send('Error1');
 					}
-					Person.create({
-						firstname:req.body.firstname,
-						lastname:req.body.lastname,
-						email:req.body.email,
-						UserId:user.id
+					
+					//Check if the user has this person created before
+					Person.findOne({
+						UserId:user.id,
+						email:req.body.email.toLowerCase()
 					})
 					.done(function(err, person){
-						if(err || !person){
-							return res.send('Error2');
+						if(err)
+						{
+							return res.json(status.UnknownError.message, status.UnknownError.code);
+						}
+						if(!person)
+						{
+							Person.create({
+								firstname:req.body.firstname,
+								lastname:req.body.lastname,
+								email:req.body.email,
+								UserId:user.id
+							})
+							.done(function(err, person){
+								if(err || !person){
+									return res.send('Error2');
+								}
+								else
+								{
+									return res.json(status.RegisterPersonSuccess.message, status.RegisterPersonSuccess.code);
+								}
+							});
 						}
 						else
 						{
-							return res.send('Created Person');
+							return res.json(status.PersonAlreadyExist.message, status.PersonAlreadyExist.code);
 						}
 					});
+
 				});
 			}
 		else{
