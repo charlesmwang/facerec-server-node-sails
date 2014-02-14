@@ -28,8 +28,13 @@ module.exports = {
 				console.log("SERVER LOG: Finding user");
 				User.findOneByUsername(req.body.username.toLowerCase())
 				.done(function(err, user){
-					if(err || !user){
-						return res.send('Error1');
+					if(err)
+					{
+						return res.json(status.UnknownError.message, status.UnknownError.code);
+					}
+					if(!user)
+					{
+						return res.json(status.UserDoesNotExist.message, status.UserDoesNotExist.code);
 					}
 					
 					//Check if the user has this person created before
@@ -51,8 +56,13 @@ module.exports = {
 								UserId:user.id
 							})
 							.done(function(err, person){
-								if(err || !person){
-									return res.send('Error2');
+								if(err)
+								{
+									return res.json(status.UnknownError.message, status.UnknownError.code);
+								}
+								if(!person)
+								{
+									return res.json(status.UnknownError.message, status.UnknownError.code);
 								}
 								else
 								{

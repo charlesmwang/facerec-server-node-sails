@@ -91,6 +91,34 @@ module.exports = {
 				status:'Face has been added successfully!'
 			}
 		},
+		
+		PersonDoesNotExist:{
+			code:514,
+			message:{
+				status:'This person does not exist in your people list.'
+			}
+		},
+		
+		UserDoesNotExist:{
+			code:515,
+			message:{
+				status:'User does not exist with this username.'
+			}
+		},
+		
+		CannotFindSessionOrToken:{
+			code:516,
+			message:{
+				status:'Cannot find session id or token.'
+			}
+		},
+		
+		NotAuthorized:{
+			code:517,
+			message:{
+				status:"Cannot authorize",
+			}
+		}
 	}
 
 };

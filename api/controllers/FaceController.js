@@ -34,11 +34,15 @@ module.exports = {
 				username = req.body.username.toLowerCase();
 				User.findOneByUsername(username)
 				.done(function(err, user){
-					if(err || !user)
+					if(err)
+					{
+						return res.json(status.UnknownError.message, status.UnknownError.code);
+					}
+					if(!user)
 					{
 						console.log("SERVER LOG: Cannot Find Username");
 						//If user does not exist
-						res.send('Error');
+						return res.json(status.UserDoesNotExist.message, status.UserDoesNotExist.code);
 					}
 					else
 					{
@@ -55,7 +59,7 @@ module.exports = {
 							{
 								console.log("SERVER LOG: Cannot Find a person");
 								//person does not exist
-								res.send('Error');
+								res.json(status.PersonDoesNotExist.message, status.PersonDoesNotExist.code);
 							}
 							else
 							{
@@ -187,9 +191,9 @@ function predict(user, pgm_image, callback)
 						.done(function(err, fperson){
 							Person.findOneById(lbphR)
 							.done(function(err, lperson){
-								console.log('Eigenface predicted ' + eperson.fullname());
-								console.log('Fisherface predicted ' + fperson.fullname());
-								console.log('LBPHface predicted ' + lperson.fullname());
+								console.log('SERVER LOG: Eigenface predicted ' + eperson.fullname());
+								console.log('SERVER LOG: Fisherface predicted ' + fperson.fullname());
+								console.log('SERVER LOG: LBPHface predicted ' + lperson.fullname());
 								//Majority
 								if(eigR == fishR && eigR == lbphR && lbphR == fishR)
 								{
@@ -325,20 +329,31 @@ function train(user, callback)
 		console.log("SERVER LOG: Finding All Faces");
 		Face.find()
 		.done(function(err, faces){
-			console.log("SERVER LOG: Finished Finding");
-			trainHelper(faces, user, function(error){
+			if(err)
+			{
+				console.log("SERVER LOG: Error in finding faces");
+				return callback(err);
+			}
+			else
+			{
+				//TODO Check if the number of face images are greater than 2 and each person has an image.
+				console.log("SERVER LOG: Finished Finding");
+				trainHelper(faces, user, function(err){
 					console.log("SERVER LOG: Return in train");
-				if(error){
-					console.log("SERVER LOG: Error in trainHelper");
-					err = 'bad';
-					return callback(err);
-				}
-				else
-				{
-					console.log("SERVER LOG: Sending null callback");
-					return callback(null);
-				}
-			});	
+					if(err)
+					{
+						console.log("SERVER LOG: Error in trainHelper");
+						return callback(err);
+					}
+					else
+					{
+						//This means success.
+						console.log("SERVER LOG: Sending null callback");
+						return callback(null);
+					}
+				});	
+			}
+			
 		});
 	}
 	else

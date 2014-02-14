@@ -7,6 +7,8 @@
  * @docs        :: http://sailsjs.org/#!documentation/policies
  *
  */
+
+var status = require('../services/StatusCode');
 module.exports = function(req, res, next) {
 
   // User is allowed, proceed to the next policy, 
@@ -14,52 +16,65 @@ module.exports = function(req, res, next) {
   /*if (req.session.authenticated) {
     return next();
   }*/
-	  console.log('here');
+	  console.log("SERVER LOG: isAuthenticated.js");
 	  if(req.body.username || req.param('username'))
 	  {
-		  console.log('here1');		  
+		  console.log("SERVER LOG: Check username is supplied in the parameter.");
 		  //Change the username to lowercase
 		  var username;
 		  if(req.body.username)
 			  username = req.body.username.toLowerCase();
 		  else
-			  username = req.param('username');
+			  username = req.param('username').toLowerCase();
+			  
+		  console.log("SERVER LOG: Find user using the username supplied. " + "[" + username + "]");
 		  //Search for user using username in the body
 		  User.findOneByUsername(username)
 		  .done(function(err, user){
 			  //If no user exists, stop
-			  if(err || !user){
-				  console.log('here2');
-				  return res.forbidden('Invalid');
+			  if(err)
+			  {
+				  console.log("SERVER LOG: Unknown Error.")
+				  return res.json(status.UnknownError.message, status.UnknownError.code);
 			  }
-			  else{
+			  if (!user)
+			  {
+				  console.log("SERVER LOG: User cannot be found.")
+				  return res.json(status.UserDoesNotExist.message, status.UserDoesNotExist.code);
+			  }
+			  else
+			  {
 				  //Delete Expired Tokens if exist
-				  console.log('here3');
-				  var now = new Date();
+				  console.log("SERVER LOG: Found user and check for expired token if exists.");
+				  var now = new Date();				  
 				  AccessToken.findByUserId(user.id)
 				  .done(function(err, tokens){
-					  console.log('here4');
+					  if(err)
+					  {
+						  console.log("SERVER LOG: Unknown Error.");
+						  return res.json(status.UnknownError.message, status.UnknownError.code);
+					  }					  
 					  if(tokens)
 					  {
-						  console.log('here5');
+						  console.log("SERVER LOG: Token was found and deleting expired token.");
 						  for(var i = 0; i < tokens.length; i++)
-						  {
-							  console.log('here6');
+						  {							  
 							  //Delete expired token
 							  var exp = new Date(tokens[i].expiration);
 							  if(now > exp)
 							  {
-								  console.log('here6.5');
 								  tokens[i].destroy(function(err){
-									  console.log('here7');
-									  if(err){}
-									  else{}
+									  if(err)
+									  {
+										  console.log("SERVER LOG: Unknown Error.");
+										  return res.json(status.UnknownError.message, status.UnknownError.code);
+									  }
 								  });	
 							  }
 						  }
 					  }
 				  });
-				  console.log('here8');
+				  console.log("SERVER LOG: Finding token from user.")
 				  //Find if the user can proceed next
 				  var aToken;
 				  if(req.session.id)
@@ -67,27 +82,33 @@ module.exports = function(req, res, next) {
 				  else if(req.body.token)
 					aToken = req.body.token;
 				  else
-				    return res.forbidden('Error');
-				console.log('here9');
+				  {
+					  return res.json(status.CannotFindSessionOrToken.message, status.CannotFindSessionOrToken.code);
+				  }
+				  console.log("SERVER LOG: Find same token if exist.")
 				  AccessToken.findOneByToken(aToken)
 				  .done(function(err, access_token){
-							  console.log('here10');
-					  if(err || !access_token)
+					  if(err)
 					  {
-							  console.log('here11');
-						  return res.forbidden('Not Allowed');
+						  console.log("SERVER LOG: Unknown Error.");
+						  return res.json(status.UnknownError.message, status.UnknownError.code);
+					  }
+					  if (!access_token)
+					  {
+						  console.log("SERVER LOG: Cannot find token in the database.")
+						  return res.json(status.NotAuthorized.message, status.NotAuthorized.code);
 					  }
 					  var expiration = new Date(access_token.expiration);
-					  console.log(access_token);
+					  console.log("SERVER LOG: Checking Expiration and current user");
 					  if(access_token.UserId == user.id && now < expiration)
 					  {
-							  console.log('here12');
+							  console.log("SERVER LOG: Valid user.");
 							  return next();
 					  }
 					  else
 					  {
-						  console.log('here13');
-						  return res.forbidden('Not Allowed');
+						  console.log("SERVER LOG: Cannot Authorize this user.");
+						  return res.json(status.NotAuthorized.message, status.NotAuthorized.code);
 					  }
 				  });
 			  }
@@ -95,7 +116,8 @@ module.exports = function(req, res, next) {
 	  }
 	  else
 	  {
-		  return res.forbidden('No Username');
+		  console.log("SERVER LOG: User cannot be found.")
+		  return res.json(status.UserDoesNotExist.message, status.UserDoesNotExist.code);
 	  }
 	  
 	  
