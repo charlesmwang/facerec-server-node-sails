@@ -2,3 +2,4 @@
 *.pgm
 *.png
 *.gif
+.DS_Store
