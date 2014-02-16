@@ -87,6 +87,7 @@ module.exports = {
 			}
 		else
 		{
+			console.log('SERVER LOG: Error Start');
 			return res.send('Error');
 		}
 	},
@@ -122,10 +123,12 @@ module.exports = {
 		socket.on('recognize', function(data){
 			if(data.username && data.image && data.imageformat)
 			{
+				console.log("TrackingID: " + data.trackingID);
 				recognizeImplementation(data.username, data.image, data.imageformat, data.trackingID, function(err, identity){
 					if(err)
 					{
-						socket.emit('error', err);
+						console.log(err);
+						socket.emit('RecError', err);
 					}
 					else
 					{
@@ -135,7 +138,7 @@ module.exports = {
 			}
 			else
 			{
-				socket.emit('error', status.UnknownError);
+				socket.emit('RecognitionError', status.UnknownError);
 			}
 		});
 	},
@@ -192,9 +195,10 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 					recognizeHelper(user, imageFileLocation, imageformat, function(err, name){
 						if(trackingID)
 						{
-							return callback({name:name ,trackingID:trackingID});
+							console.log("This has a trackingID");
+							return callback(err, {name:name ,trackingID:trackingID});
 						}
-						return callback({name:name});
+						return callback(err, {name:name});
 					});
 				});
 			//}
