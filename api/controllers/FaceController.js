@@ -300,6 +300,18 @@ function recognizeHelper(user, image, imageformat, callback)
 		{
 			console.log("SERVER LOG: Entering Predict");
 			predict(user, image + '.pgm', function(err, name){
+				
+				//Clean File Here
+				console.log("SERVER LOG: Deleting Image Files");
+
+				//Remove Original Image
+				fs.unlink(image + imageformat , function(){
+					console.log("SERVER LOG: Removed Original Image Sent.")
+				});
+				fs.unlink(image + '.pgm' , function(){
+					console.log("SERVER LOG: Removed PGM Image Sent.")
+				});
+				
 				if(err)
 				{
 					callback(err, null);

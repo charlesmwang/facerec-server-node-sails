@@ -249,7 +249,8 @@ function validate(req, res, user, password)
 				}
 				if(token)
 				{
-					return res.json(status.LoginSuccess.message, status.LoginSuccess.code);
+					//return res.json(status.LoginSuccess.message, status.LoginSuccess.code);
+					return res.json({access_token:token.token}, status.LoginSuccess.code);
 				}
 				else
 				{
