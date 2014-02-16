@@ -184,7 +184,8 @@ module.exports = {
 				if(err)
 				{
 					console.log("SERVER LOG: Signup Error Detected");
-					console.log("SERVER LOG: Ending singup");
+					console.log("SERVER LOG: Ending signup");
+					console.log(err);
 					return res.json(status.SignUpError.message, status.SignUpError.code);
 				}
 				if(!user)

@@ -42,7 +42,12 @@ module.exports.routes = {
   
   'post /people/register': 'PersonController.register',
   'get /people/view': 'PersonController.view',
+  'get /people': 'PersonController.list',
   
+  'get /faces':{
+	  view: 'test'
+  },
+  'get /faces/socket': 'FaceController.test',
   'post /faces/add': 'FaceController.add',
   'post /faces/recognize': 'FaceController.recognize',
 

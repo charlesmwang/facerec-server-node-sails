@@ -1,0 +1,8 @@
+<script>
+//var socket = io.connect('http://127.0.0.1:1337/');
+socket.get('/faces/socket',{
+  message: 'hi there!'
+}, function (response) {
+  // response === {success: true, message: 'hi there!'}
+});
+</script>

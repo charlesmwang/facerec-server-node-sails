@@ -8,6 +8,8 @@
  * http://sailsjs.org/#documentation
  */
 
+var facecontroller = require('../api/controllers/FaceController');
+
 module.exports.sockets = {
 
   // This custom onConnect function will be run each time AFTER a new socket connects
@@ -15,7 +17,8 @@ module.exports.sockets = {
   // Keep in mind that Sails' RESTful simulation for sockets 
   // mixes in socket.io events for your routes and blueprints automatically.
   onConnect: function(session, socket) {
-
+	  console.log('Connected!!!');
+	  facecontroller.test(null,socket);
     // By default: do nothing
     // This is a good place to subscribe a new socket to a room, inform other users that
     // someone new has come online, or any other custom socket.io logic
@@ -105,19 +108,19 @@ module.exports.sockets = {
   // Primarily because of this situation, as well as a handful of other advanced
   // use cases, Sails allows you to override the authorization behavior 
   // with your own custom logic by specifying a function, e.g:
-  /*
-    authorization: function authorizeAttemptedSocketConnection(reqObj, cb) {
+  
+    /*authorization: function authorizeAttemptedSocketConnection(reqObj, cb) {
 
         // Any data saved in `handshake` is available in subsequent requests
         // from this as `req.socket.handshake.*`
-
+		cb(null, true);
         //
         // to allow the connection, call `cb(null, true)`
         // to prevent the connection, call `cb(null, false)`
         // to report an error, call `cb(err)`
-    }
-  */
-  authorization: true,
+    },*/
+  
+  authorization: true,//Change this
 
   // Match string representing the origins that are allowed to connect to the Socket.IO server
   origins: '*:*',

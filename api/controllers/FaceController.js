@@ -95,58 +95,51 @@ module.exports = {
 		console.log("SERVER LOG: Access /faces/recognize");
 		if(req.body.username && req.body.image && req.body.imageformat)
 		{
-			console.log("SERVER LOG: Finding User");
-			username = req.body.username.toLowerCase();
-			User.findOneByUsername(username)
-			.done(function(err, user){
+			recognizeImplementation(req.body.username, req.body.image, req.body.imageformat, req.body.trackingID, function(err, data){
 				if(err)
 				{
-					console.log("SERVER LOG: Error occurred");
-					return res.send('Error');
-				}
-				else if(!user)
-				{
-					console.log("SERVER LOG: Cannot find user");
+					res.json(err.message, err.code);
 				}
 				else
 				{
-					//TODO pass in already converted image
-					//Decode base64 image, do a for loop for number of faces, etc.
-					//
-					
-					//Save that image
-					//TODO use config
-					console.log("SERVER LOG: Check tmp path exist");
-					tmpPath = './.tmp/';
-					if(!fs.existsSync(tmpPath))
-					{
-						fs.mkdir(tmpPath);
-					}
-					
-					//for(int i = 0; i < # of faces; i++)
-					//{
-						console.log("SERVER LOG: Hash filename");
-						imageFileLocation = tmpPath + hashFilename();
-						console.log("SERVER LOG: Saving Image");							
-						fs.writeFile(imageFileLocation + req.body.imageformat, req.body.image, 'base64', function(err){
-							console.log("SERVER LOG: Go to recognizeHelper.");
-							recognizeHelper(user, imageFileLocation, req.body.imageformat, function(err, name){
-								if(req.body.trackingID)
-								{
-									return res.json({name:name ,trackingID:req.body.trackingID}, 200);
-								}
-								return res.json({name:name}, 200);
-							});
-						});
-					//}
-
-					
+					res.json(data, 200);
 				}
 			});
-			
 		}
+		else
+		{
+			res.json(status.UnknownError.message, status.UnknownError.code);
+		}
+	
 	},
 	
+	//Socket.IO implementation
+	test:function(req,socket){
+		socket.on('fun', function(data){
+			socket.emit('world', {name:"Makoto",message:"Yo my friend!"});
+		});
+		
+		socket.on('recognize', function(data){
+			if(data.username && data.image && data.imageformat)
+			{
+				recognizeImplementation(data.username, data.image, data.imageformat, data.trackingID, function(err, identity){
+					if(err)
+					{
+						socket.emit('error', err);
+					}
+					else
+					{
+						socket.emit('identified', identity);
+					}
+				});	
+			}
+			else
+			{
+				socket.emit('error', status.UnknownError);
+			}
+		});
+	},
+
 
   /**
    * Overrides for the settings in `config/controllers.js`
@@ -157,6 +150,60 @@ module.exports = {
   
 };
 
+function recognizeImplementation(username, image, imageformat, trackingID, callback){
+	console.log("SERVER LOG: Finding User");
+	username = username.toLowerCase();
+	User.findOneByUsername(username)
+	.done(function(err, user){
+		if(err)
+		{
+			console.log("SERVER LOG: Error occurred");
+			return callback(status.UnknownError, null);
+		}
+		else if(!user)
+		{
+			console.log("SERVER LOG: Cannot find user");
+			return callback(status.UserDoesNotExist, null);
+		}
+		else
+		{
+			//TODO pass in already converted image
+			//Decode base64 image, do a for loop for number of faces, etc.
+			//
+			
+			//Save that image
+			//TODO use config
+			console.log("SERVER LOG: Check tmp path exist");
+			tmpPath = './.tmp/';
+			if(!fs.existsSync(tmpPath))
+			{
+				fs.mkdir(tmpPath);
+			}
+			
+			//TODO Perform further cropping
+			//This methid only works for single face only
+			//for(int i = 0; i < # of faces; i++)
+			//{
+				console.log("SERVER LOG: Hash filename");
+				imageFileLocation = tmpPath + hashFilename();
+				console.log("SERVER LOG: Saving Image");							
+				fs.writeFile(imageFileLocation + imageformat, image, 'base64', function(err){
+					console.log("SERVER LOG: Go to recognizeHelper.");
+					recognizeHelper(user, imageFileLocation, imageformat, function(err, name){
+						if(trackingID)
+						{
+							return callback({name:name ,trackingID:trackingID});
+						}
+						return callback({name:name});
+					});
+				});
+			//}
+
+			
+		}
+	});
+	
+}
 
 //Initialize FaceRecognizer variables
 var eigenFaceRecognizer = cv.FaceRecognizer.createEigenFaceRecognizer();

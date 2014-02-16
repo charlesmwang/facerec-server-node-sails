@@ -98,8 +98,37 @@ module.exports = {
 					if(err)
 						return res.send('Error');
 					else
-						return res.json(people);
+						return res.json(people,200);
 				});
+			});
+		}
+	},
+	
+	list:function(req,res){
+		if(req.param('username'))
+		{
+			//Search for access token
+			//AccessToken.findOneByToken()
+			User.findOneByUsername(req.param('username').toLowerCase())
+			.done(function(err, user){
+				Person.find()
+				.where({UserId:user.id})
+				.done(function(err, people){
+					if(err)
+						return res.send('Error');
+					else
+					{
+						//Filter some stuff
+						for(i = 0; i < people.length; i++)
+						{
+							delete people[i].id;
+							delete people[i].UserId;
+							delete people[i].createdAt;
+							delete people[i].updatedAt;
+						}
+						return res.json(people,200);
+					}
+				});				
 			});
 		}
 	},
