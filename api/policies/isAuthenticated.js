@@ -8,7 +8,7 @@
  *
  */
 
-var status = require('../services/StatusCode');
+var status = require('../services/StatusCode').status;
 module.exports = function(req, res, next) {
 
   // User is allowed, proceed to the next policy, 

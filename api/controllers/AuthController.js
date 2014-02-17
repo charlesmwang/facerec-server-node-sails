@@ -237,9 +237,10 @@ function validate(req, res, user, password)
 			}
 			date.setHours(date.getHours()+3);
 			//date.setSeconds(date.getSeconds()+5);
+			console.log(date);
 			AccessToken.create({
 				UserId:user.id,
-				expiration:date.toString(),
+				expiration:date,
 				token:atoken,
 			})
 			.done(function(err, token){
@@ -250,7 +251,7 @@ function validate(req, res, user, password)
 				if(token)
 				{
 					//return res.json(status.LoginSuccess.message, status.LoginSuccess.code);
-					return res.json({access_token:token.token}, status.LoginSuccess.code);
+					return res.json({access_token:token.token, expiration:date}, status.LoginSuccess.code);
 				}
 				else
 				{

@@ -1,8 +1,9 @@
-var status = require("../services/StatusCode");
+var status = require("../services/StatusCode").status;
 
 module.exports = function(req, res, next) {
 	//Find username paramenter
 	console.log("SERVER LOG: Checking Permission in checkPermission.js")
+	console.log(status);
 	if(req.body.username || req.param('username'))
 	{
 		console.log("SERVER LOG: Checking username.")
