@@ -7,10 +7,10 @@
 
 <ul>
 	<li>Charles Wang , cmw252@cornell.edu</li>
-	<li>Team Member 2</li>
-	<li>Team Member 3</li>
-	<li>Team Member 4</li>
-	<li>Team Member 5</li>
+	<li>Qian Zhao</li>
+	<li>Haoyuan Wang</li>
+	<li>Peiqi Lei</li>
+	<li>Zhongbo Geng</li>
 </ul>
 
 ##Installation Guide
