@@ -31,5 +31,11 @@
 <p><code>npm install</code></p>
 <p>Go to <code>config/adapters.js</code> and configure your database settings.</p>
 
+<h3>Client Software</h3>
+iOS Client
+https://github.com/charlesmwang/facerec-app-iOS
+
+
+
 ##API Documentation (Coming Soon!)
 <h3>Check Wiki</h3>
