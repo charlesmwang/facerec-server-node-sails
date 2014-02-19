@@ -236,6 +236,8 @@ function predict(user, pgm_image, callback)
 					fishR = fisherFaceRecognizer.predictSync(im).id;
 					lbphR = lbphFaceRecognizer.predictSync(im).id;
 					
+					console.log(lbphR);
+					
 					Person.findOneById(eigR)
 					.done(function(err, eperson){
 						Person.findOneById(fishR)
@@ -244,7 +246,8 @@ function predict(user, pgm_image, callback)
 							.done(function(err, lperson){
 								console.log('SERVER LOG: Eigenface predicted ' + eperson.fullname());
 								console.log('SERVER LOG: Fisherface predicted ' + fperson.fullname());
-								console.log('SERVER LOG: LBPHface predicted ' + lperson.fullname());
+								console.log(lperson);
+								//console.log('SERVER LOG: LBPHface predicted ' + lperson.fullname());
 								//Majority
 								if(eigR == fishR && eigR == lbphR && lbphR == fishR)
 								{
@@ -258,7 +261,7 @@ function predict(user, pgm_image, callback)
 								}
 								else if(eigR == lbphR)
 								{
-									callback(err, lperson.fullname());
+									callback(err, eperson.fullname());
 									//return lbphR
 								}
 								else if(fishR == lbphR)
