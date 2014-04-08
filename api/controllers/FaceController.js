@@ -192,13 +192,49 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 				console.log("SERVER LOG: Saving Image");							
 				fs.writeFile(imageFileLocation + imageformat, image, 'base64', function(err){
 					console.log("SERVER LOG: Go to recognizeHelper.");
-					recognizeHelper(user, imageFileLocation, imageformat, function(err, name){
-						if(trackingID)
-						{
-							console.log("This has a trackingID");
-							return callback(err, {name:name ,trackingID:trackingID});
-						}
-						return callback(err, {name:name});
+					recognizeHelper(user, imageFileLocation, imageformat, function(err, person){
+						
+						Service.findAllByPersonId(person.id)
+						.done(function(err, services){
+							if(err && !services)
+							{
+								return callback(err);
+							}
+							else
+							{
+								if(trackingID)
+								{
+									console.log("This has a trackingID");
+									if(services.length == 0)
+										return callback(err, {name:person.fullname() ,trackingID:trackingID});
+									else
+									{
+										var json_obj = {};
+										json_obj["name"] = person.fullname();
+										json_obj["trackingID"] = trackingID;
+										for(var i = 0; i < services.length; i++)
+											json_obj[servicess[i].service] = service.username;
+										
+										return callback(err, JSON.stringify(json_obj));
+										
+									}
+								}
+								else
+								{
+									if(services.length == 0)
+										return callback(err, {name:person.fullname()});
+									else
+									{
+										var json_obj = {};
+										json_obj["name"] = person.fullname();
+										for(var i = 0; i < services.length; i++)
+											json_obj[servicess[i].service] = service.username;
+									
+										return callback(err, JSON.stringify(json_obj));									
+									}									
+								}
+							}
+						});
 					});
 				});
 			//}
@@ -276,7 +312,7 @@ function predict(user, pgm_image, callback)
 								}*/
 								if(lperson)
 								{
-									callback(err, lperson.fullname());
+									callback(err, lperson);
 								}
 								else
 								{
