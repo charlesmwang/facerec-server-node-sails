@@ -180,7 +180,7 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 			tmpPath = './.tmp/';
 			if(!fs.existsSync(tmpPath))
 			{
-				fs.mkdir(tmpPath);
+				fs.mkdirSync(tmpPath);
 			}
 			
 			//TODO Perform further cropping
@@ -212,7 +212,7 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 //Initialize FaceRecognizer variables
 var eigenFaceRecognizer = cv.FaceRecognizer.createEigenFaceRecognizer();
 var fisherFaceRecognizer = cv.FaceRecognizer.createFisherFaceRecognizer();
-var lbphFaceRecognizer = cv.FaceRecognizer.createLBPHFaceRecognizer();
+var lbphFaceRecognizer = cv.FaceRecognizer.createLBPHFaceRecognizer(1,8,8,8,75);
 
 //Predict
 function predict(user, pgm_image, callback)
@@ -232,11 +232,11 @@ function predict(user, pgm_image, callback)
 				
 				cv.readImage(pgm_image, function(err, im){
 					if(err) { return callback(err, null); }
+					lbphR = lbphFaceRecognizer.predictSync(im).id;					
+					console.log("LBPH is " + lbphR);					
 					eigR  = eigenFaceRecognizer.predictSync(im).id;
 					fishR = fisherFaceRecognizer.predictSync(im).id;
-					lbphR = lbphFaceRecognizer.predictSync(im).id;
 					
-					console.log(lbphR);
 					
 					Person.findOneById(eigR)
 					.done(function(err, eperson){
@@ -244,7 +244,7 @@ function predict(user, pgm_image, callback)
 						.done(function(err, fperson){
 							Person.findOneById(lbphR)
 							.done(function(err, lperson){
-								console.log('SERVER LOG: Eigenface predicted ' + eperson.fullname());
+								/*console.log('SERVER LOG: Eigenface predicted ' + eperson.fullname());
 								console.log('SERVER LOG: Fisherface predicted ' + fperson.fullname());
 								console.log(lperson);
 								//console.log('SERVER LOG: LBPHface predicted ' + lperson.fullname());
@@ -273,6 +273,15 @@ function predict(user, pgm_image, callback)
 								{
 									callback(err, fperson.fullname());
 									//return fishR
+								}*/
+								if(lperson)
+								{
+									callback(err, lperson.fullname());
+								}
+								else
+								{
+									err = status.UserDoesNotExist;
+									callback(err, null);
 								}
 							});
 						});
@@ -350,6 +359,13 @@ function trainHelper(faces, user, callback)
 		fs.mkdir(faceDataDirectory);
 	}
 
+	console.log("SERVER LOG: Creating lbphface training data.");
+	shasum = crypto.createHash('sha1');	
+	hash_fname_lb = shasum.update(n+'_l').digest('hex') + '.xml';
+    lbphFaceRecognizer.trainSync(trainingData);
+    lbphFaceRecognizer.saveSync(faceDataDirectory + hash_fname_lb);
+	//console.log(hash_fname_lb);
+	
 	console.log("SERVER LOG: Creating Eigenface training data.");
 	var shasum = crypto.createHash('sha1');
 	hash_fname_ei = shasum.update(n+'_e').digest('hex') + '.xml';
@@ -362,12 +378,6 @@ function trainHelper(faces, user, callback)
 	hash_fname_fi = shasum.update(n+'_f').digest('hex') + '.xml';
     fisherFaceRecognizer.trainSync(trainingData);
     fisherFaceRecognizer.saveSync(faceDataDirectory + hash_fname_fi);
-
-	console.log("SERVER LOG: Creating lbphface training data.");
-	shasum = crypto.createHash('sha1');	
-	hash_fname_lb = shasum.update(n+'_l').digest('hex') + '.xml';
-    lbphFaceRecognizer.trainSync(trainingData);
-    lbphFaceRecognizer.saveSync(faceDataDirectory + hash_fname_lb);
 	
 	console.log("SERVER LOG: Training Data created.");
 	TrainingData.create({
@@ -394,6 +404,7 @@ function train(user, callback)
 	{
 		console.log("SERVER LOG: Finding All Faces");
 		Face.find()
+		.sort('PersonId')
 		.done(function(err, faces){
 			if(err)
 			{
@@ -402,22 +413,34 @@ function train(user, callback)
 			}
 			else
 			{
-				//TODO Check if the number of face images are greater than 2 and each person has an image.
-				console.log("SERVER LOG: Finished Finding");
-				trainHelper(faces, user, function(err){
-					console.log("SERVER LOG: Return in train");
-					if(err)
-					{
-						console.log("SERVER LOG: Error in trainHelper");
-						return callback(err);
-					}
-					else
-					{
-						//This means success.
-						console.log("SERVER LOG: Sending null callback");
-						return callback(null);
-					}
-				});	
+				console.log("SERVER LOG: Finished Finding");	
+				console.log(faces.length);
+				console.log(faces[0].PersonId + " " + faces[faces.length-1].PersonId)
+				//TODO Check if the number of face images are greater than 2 and each person has an image.				
+				if(faces.length > 1 && faces[0].PersonId != faces[faces.length-1].PersonId)
+				{
+					trainHelper(faces, user, function(err){
+						console.log("SERVER LOG: Return in train");
+						if(err)
+						{
+							console.log("SERVER LOG: Error in trainHelper");
+							return callback(err);
+						}
+						else
+						{
+							//This means success.
+							console.log("SERVER LOG: Sending null callback");
+							return callback(null);
+						}
+					});						
+				}
+				else
+				{
+					console.log("SERVER LOG: Error in trainHelper - Not enough faces");
+					var err = "Not Enough Faces";
+					return callback(err);
+				}
+				
 			}
 			
 		});
@@ -430,7 +453,7 @@ function train(user, callback)
 		.done(function(err, user, faces){
 			trainHelper(faces, function(error){
 				if(error){
-					err = 'bad';
+					var err = 'bad';
 					return callback(err);
 				}
 			});
