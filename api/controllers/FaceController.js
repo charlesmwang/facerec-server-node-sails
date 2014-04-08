@@ -180,7 +180,7 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 			tmpPath = './.tmp/';
 			if(!fs.existsSync(tmpPath))
 			{
-				fs.mkdir(tmpPath);
+				fs.mkdirSync(tmpPath);
 			}
 			
 			//TODO Perform further cropping
@@ -404,6 +404,7 @@ function train(user, callback)
 	{
 		console.log("SERVER LOG: Finding All Faces");
 		Face.find()
+		.sort('PersonId')
 		.done(function(err, faces){
 			if(err)
 			{
@@ -412,22 +413,34 @@ function train(user, callback)
 			}
 			else
 			{
-				//TODO Check if the number of face images are greater than 2 and each person has an image.
-				console.log("SERVER LOG: Finished Finding");
-				trainHelper(faces, user, function(err){
-					console.log("SERVER LOG: Return in train");
-					if(err)
-					{
-						console.log("SERVER LOG: Error in trainHelper");
-						return callback(err);
-					}
-					else
-					{
-						//This means success.
-						console.log("SERVER LOG: Sending null callback");
-						return callback(null);
-					}
-				});	
+				console.log("SERVER LOG: Finished Finding");	
+				console.log(faces.length);
+				console.log(faces[0].PersonId + " " + faces[faces.length-1].PersonId)
+				//TODO Check if the number of face images are greater than 2 and each person has an image.				
+				if(faces.length > 1 && faces[0].PersonId != faces[faces.length-1].PersonId)
+				{
+					trainHelper(faces, user, function(err){
+						console.log("SERVER LOG: Return in train");
+						if(err)
+						{
+							console.log("SERVER LOG: Error in trainHelper");
+							return callback(err);
+						}
+						else
+						{
+							//This means success.
+							console.log("SERVER LOG: Sending null callback");
+							return callback(null);
+						}
+					});						
+				}
+				else
+				{
+					console.log("SERVER LOG: Error in trainHelper - Not enough faces");
+					var err = "Not Enough Faces";
+					return callback(err);
+				}
+				
 			}
 			
 		});
@@ -440,7 +453,7 @@ function train(user, callback)
 		.done(function(err, user, faces){
 			trainHelper(faces, function(error){
 				if(error){
-					err = 'bad';
+					var err = 'bad';
 					return callback(err);
 				}
 			});

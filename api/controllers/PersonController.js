@@ -66,7 +66,28 @@ module.exports = {
 								}
 								else
 								{
-									return res.json(status.RegisterPersonSuccess.message, status.RegisterPersonSuccess.code);
+									if(req.body.facebook && req.body.facebook.length > 0)
+									{
+										Service.create({
+											service:'Facebook',
+											username:req.body.facebook,
+											PersonId:person.id,
+										})
+										.done(function(err, service){
+											if(err || !service)
+											{
+												return res.json(status.UnknownError.message, status.UnknownError.code);
+											}
+											else
+											{
+												return res.json(status.RegisterPersonSuccess.message, status.RegisterPersonSuccess.code);												
+											}
+										});
+									}
+									else
+									{
+										return res.json(status.RegisterPersonSuccess.message, status.RegisterPersonSuccess.code);										
+									}
 								}
 							});
 						}
