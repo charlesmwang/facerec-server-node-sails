@@ -208,7 +208,19 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 									{
 										console.log("This has a trackingID");
 										if(services.length == 0)
-											return callback(err, {name:person.fullname() ,trackingID:trackingID});
+										{
+											var json_obj = {};
+											json_obj["name"] = person.fullname();
+											json_obj["firstname"] = person.firstname;
+											json_obj["lastname"] = person.lastname;
+											json_obj["email"] = person.email;
+											json_obj["trackingID"] = trackingID;
+											console.log("-----");
+											console.log((json_obj))
+											console.log("-----");
+											return callback(err, json_obj);
+										}
+
 										else
 										{
 											var json_obj = {};
