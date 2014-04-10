@@ -213,11 +213,18 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 										{
 											var json_obj = {};
 											json_obj["name"] = person.fullname();
-											json_obj["trackingID"] = trackingID;
+											json_obj["firstname"] = person.firstname;
+											json_obj["lastname"] = person.lastname;
+											json_obj["email"] = person.email;
+											json_obj["trackingID"] = trackingID;										
 											for(var i = 0; i < services.length; i++)
-												json_obj[servicess[i].service] = service.username;
-										
-											return callback(err, JSON.stringify(json_obj));
+											{
+												json_obj[services[i].service] = services[i].username;											
+											}
+											console.log("-----");
+											console.log((json_obj))
+											console.log("-----");
+											return callback(err, json_obj);
 										
 										}
 									}
@@ -229,10 +236,14 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 										{
 											var json_obj = {};
 											json_obj["name"] = person.fullname();
+											json_obj["firstname"] = person.firstname;
+											json_obj["lastname"] = person.lastname;											
+											json_obj["email"] = person.email;											
 											for(var i = 0; i < services.length; i++)
-												json_obj[servicess[i].service] = service.username;
-									
-											return callback(err, JSON.stringify(json_obj));									
+											{
+												json_obj[services[i].service] = services[i].username;												
+											}									
+											return callback(err, json_obj);
 										}
 									}
 								}
@@ -255,9 +266,10 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 }
 
 //Initialize FaceRecognizer variables
-var eigenFaceRecognizer = cv.FaceRecognizer.createEigenFaceRecognizer();
-var fisherFaceRecognizer = cv.FaceRecognizer.createFisherFaceRecognizer();
+//var eigenFaceRecognizer = cv.FaceRecognizer.createEigenFaceRecognizer();
+//var fisherFaceRecognizer = cv.FaceRecognizer.createFisherFaceRecognizer();
 var lbphFaceRecognizer = cv.FaceRecognizer.createLBPHFaceRecognizer(1,8,8,8,75);
+//var lbphFaceRecognizer = cv.FaceRecognizer.createLBPHFaceRecognizer();
 
 //Predict
 function predict(user, pgm_image, callback)
@@ -271,67 +283,26 @@ function predict(user, pgm_image, callback)
 		{
 			if(datum.length > 0){
 				trainingData = datum[datum.length - 1];
-				eigenFaceRecognizer.loadSync(trainingData.EigenFace_path);
-				fisherFaceRecognizer.loadSync(trainingData.FisherFace_path);
+
 				lbphFaceRecognizer.loadSync(trainingData.LBPHFace_path);
 				
 				cv.readImage(pgm_image, function(err, im){
 					if(err) { return callback(err, null); }
 					lbphR = lbphFaceRecognizer.predictSync(im).id;					
-					console.log("LBPH is " + lbphR);					
-					eigR  = eigenFaceRecognizer.predictSync(im).id;
-					fishR = fisherFaceRecognizer.predictSync(im).id;
-					
-					
-					Person.findOneById(eigR)
-					.done(function(err, eperson){
-						Person.findOneById(fishR)
-						.done(function(err, fperson){
-							Person.findOneById(lbphR)
-							.done(function(err, lperson){
-								/*console.log('SERVER LOG: Eigenface predicted ' + eperson.fullname());
-								console.log('SERVER LOG: Fisherface predicted ' + fperson.fullname());
-								console.log(lperson);
-								//console.log('SERVER LOG: LBPHface predicted ' + lperson.fullname());
-								//Majority
-								if(eigR == fishR && eigR == lbphR && lbphR == fishR)
-								{
-									callback(err, fperson.fullname());
-									//return fishR
-								}
-								else if(eigR == fishR)
-								{
-									callback(err, fperson.fullname());
-									//return fishR
-								}
-								else if(eigR == lbphR)
-								{
-									callback(err, eperson.fullname());
-									//return lbphR
-								}
-								else if(fishR == lbphR)
-								{
-									callback(err, fperson.fullname());
-									//return fishR;
-								}
-								else
-								{
-									callback(err, fperson.fullname());
-									//return fishR
-								}*/
-								if(lperson)
-								{
-									callback(err, lperson);
-								}
-								else
-								{
-									err = status.UserDoesNotExist;
-									callback(err, null);
-								}
-							});
-						});
+
+					Person.findOneById(lbphR)
+					.done(function(err, lperson){
+
+						if(lperson)
+						{
+							callback(err, lperson);
+						}
+						else
+						{
+							err = status.UserDoesNotExist;
+							callback(err, null);
+						}
 					});
-					
 				});
 			}
 			else{
@@ -411,18 +382,18 @@ function trainHelper(faces, user, callback)
     lbphFaceRecognizer.saveSync(faceDataDirectory + hash_fname_lb);
 	//console.log(hash_fname_lb);
 	
-	console.log("SERVER LOG: Creating Eigenface training data.");
+	//console.log("SERVER LOG: Creating Eigenface training data.");
 	var shasum = crypto.createHash('sha1');
 	hash_fname_ei = shasum.update(n+'_e').digest('hex') + '.xml';
-    eigenFaceRecognizer.trainSync(trainingData);
-    eigenFaceRecognizer.saveSync(faceDataDirectory + hash_fname_ei);
+    //eigenFaceRecognizer.trainSync(trainingData);
+    //eigenFaceRecognizer.saveSync(faceDataDirectory + hash_fname_ei);
 
 
 	console.log("SERVER LOG: Creating Fisherface training data.");
 	shasum = crypto.createHash('sha1');
 	hash_fname_fi = shasum.update(n+'_f').digest('hex') + '.xml';
-    fisherFaceRecognizer.trainSync(trainingData);
-    fisherFaceRecognizer.saveSync(faceDataDirectory + hash_fname_fi);
+    //fisherFaceRecognizer.trainSync(trainingData);
+    //fisherFaceRecognizer.saveSync(faceDataDirectory + hash_fname_fi);
 	
 	console.log("SERVER LOG: Training Data created.");
 	TrainingData.create({
