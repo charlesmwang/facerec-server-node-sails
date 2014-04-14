@@ -128,7 +128,9 @@ module.exports = {
 					if(err)
 					{
 						console.log(err);
-						socket.emit('RecError', err);
+						//identity can contain trackingID
+						console.log(identity);
+						socket.emit('RecError', identity);
 					}
 					else
 					{
@@ -263,7 +265,18 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 						}
 						else
 						{
-							return callback(err, null);
+							if(trackingID)
+							{
+								var json_obj = {};
+								var err = status.UserDoesNotExist;
+								json_obj['trackingID'] = trackingID;
+								return callback(err, json_obj);
+							}
+							else
+							{
+								var err = status.UserDoesNotExist;
+								return callback(err, null);
+							}
 						}
 												
 
@@ -278,10 +291,7 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 }
 
 //Initialize FaceRecognizer variables
-//var eigenFaceRecognizer = cv.FaceRecognizer.createEigenFaceRecognizer();
-//var fisherFaceRecognizer = cv.FaceRecognizer.createFisherFaceRecognizer();
-var lbphFaceRecognizer = cv.FaceRecognizer.createLBPHFaceRecognizer(1,8,8,8,75);
-//var lbphFaceRecognizer = cv.FaceRecognizer.createLBPHFaceRecognizer();
+lbphFaceRecognizer = cv.FaceRecognizer.createLBPHFaceRecognizer(1,8,8,8,75);
 
 //Predict
 function predict(user, pgm_image, callback)
@@ -432,7 +442,7 @@ function train(user, callback)
 	console.log("SERVER LOG: Inside Training");
 	err = null;
 	//Initialize Empty Faces
-	faces = [];
+	var faces = [];
 	console.log("SERVER LOG: Checking user group");	
 	//Check User Group	
 	if(user.group === 'admin')
