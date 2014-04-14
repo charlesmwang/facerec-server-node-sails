@@ -373,8 +373,15 @@ function trainHelper(faces, user, callback)
 	console.log("SERVER LOG: Looping through Faces and Loading to Vector");
 	for(i = 0; i < faces.length; i++){
 		//TODO Fix this later
-		trainingData.push([parseInt(faces[i].PersonId), faces[i].pgm_path]);
-		//console.log(faces[i].PersonId + ' ' + faces[i].pgm_path);
+		if(!fs.existsSync(faces[i].pgm_path))
+		{
+			//TODO REMOVE THIS FACE
+			console.log("Weird: " + faces[i].pgm_path);
+		}
+		else
+		{
+			trainingData.push([parseInt(faces[i].PersonId), faces[i].pgm_path]);
+		}
 	}
 
 	var date = new Date();
@@ -401,7 +408,7 @@ function trainHelper(faces, user, callback)
     //eigenFaceRecognizer.saveSync(faceDataDirectory + hash_fname_ei);
 
 
-	console.log("SERVER LOG: Creating Fisherface training data.");
+	//console.log("SERVER LOG: Creating Fisherface training data.");
 	shasum = crypto.createHash('sha1');
 	hash_fname_fi = shasum.update(n+'_f').digest('hex') + '.xml';
     //fisherFaceRecognizer.trainSync(trainingData);
