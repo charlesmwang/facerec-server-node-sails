@@ -124,17 +124,33 @@ module.exports = {
 			if(data.username && data.image && data.imageformat)
 			{
 				console.log("TrackingID: " + data.trackingID);
-				recognizeImplementation(data.username, data.image, data.imageformat, data.trackingID, function(err, identity){
+				recognizeImplementation(data.username, data.image, data.imageformat, data.trackingID, function(err, identity, image){
 					if(err)
 					{
 						console.log(err);
 						//identity can contain trackingID
 						console.log(identity);
-						socket.emit('RecError', identity);
-					}
+						socket.emit('RecError', identity);						
+					}					
 					else
 					{
 						socket.emit('identified', identity);
+					}
+					
+					if(image && image.path && image.format)
+					{
+						
+//						setTimeout(function(){
+							fs.unlink(image.path + image.format, function(err){
+								if(err){console.log("SERVER: Failed to delete " + image.path + image.format + " " + err);}
+								else{console.log("SERVER: Successfully deleted " + image.path + image.format)}
+							});
+							//Uncomment This
+							fs.unlink(image.path + '.pgm', function(err){
+								if(err){console.log("SERVER: Failed to delete " + image.path + '.pgm')}
+								else{console.log("SERVER: Successfully deleted " + image.path + '.pgm')}
+							});
+//						}, 1000);					
 					}
 				});	
 			}
@@ -195,14 +211,20 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 				fs.writeFile(imageFileLocation + imageformat, image, 'base64', function(err){
 					console.log("SERVER LOG: Go to recognizeHelper.");
 					recognizeHelper(user, imageFileLocation, imageformat, function(err, person){
+						
+						//Used for deletion (cleanup)
+						var image = {};
+						image["path"] = imageFileLocation;
+						image["format"] = imageformat;
+												
 						console.log(person);
 						if(person)
 						{
 							Service.find({PersonId:person.id})
-							.done(function(err, services){
+							.done(function(err, services){																					
 								if(err && !services)
 								{
-									return callback(err);
+									return callback(err, null, image);
 								}
 								else
 								{
@@ -220,7 +242,12 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 											console.log("-----");
 											console.log((json_obj))
 											console.log("-----");
-											return callback(err, json_obj);
+											
+											var image = {};
+											image["path"] = imageFileLocation;
+											image["format"] = imageformat;
+											
+											return callback(err, json_obj, image);
 										}
 
 										else
@@ -238,14 +265,14 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 											console.log("-----");
 											console.log((json_obj))
 											console.log("-----");
-											return callback(err, json_obj);
+											return callback(err, json_obj, image);
 										
 										}
 									}
 									else
 									{
 										if(services.length == 0)
-											return callback(err, {name:person.fullname()});
+											return callback(err, {name:person.fullname()}, image);
 										else
 										{
 											var json_obj = {};
@@ -257,7 +284,7 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 											{
 												json_obj[services[i].service] = services[i].username;												
 											}									
-											return callback(err, json_obj);
+											return callback(err, json_obj, image);
 										}
 									}
 								}
@@ -270,16 +297,15 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 								var json_obj = {};
 								var err = status.UserDoesNotExist;
 								json_obj['trackingID'] = trackingID;
-								return callback(err, json_obj);
+								return callback(err, json_obj, image);
 							}
 							else
 							{
 								var err = status.UserDoesNotExist;
-								return callback(err, null);
+								return callback(err, null, image);
 							}
 						}
 												
-
 					});
 				});
 			//}
@@ -317,10 +343,12 @@ function predict(user, pgm_image, callback)
 
 						if(lperson)
 						{
+							console.log("Crashed 1");
 							callback(err, lperson);
 						}
 						else
 						{
+							console.log("Crashed 2");							
 							err = status.UserDoesNotExist;
 							callback(err, null);
 						}
@@ -351,25 +379,15 @@ function recognizeHelper(user, image, imageformat, callback)
 			console.log("SERVER LOG: Entering Predict");
 			predict(user, image + '.pgm', function(err, name){
 				
-				//Clean File Here
-				console.log("SERVER LOG: Deleting Image Files");
-
-				//Remove Original Image
-				fs.unlink(image + imageformat , function(){
-					console.log("SERVER LOG: Removed Original Image Sent.")
-				});
-				fs.unlink(image + '.pgm' , function(){
-					console.log("SERVER LOG: Removed PGM Image Sent.")
-				});
-				
 				if(err)
 				{
 					callback(err, null);
 				}
 				else
 				{
-					callback(null, name)
+					callback(err, name);
 				}
+												
 			});
 		}
 	});
