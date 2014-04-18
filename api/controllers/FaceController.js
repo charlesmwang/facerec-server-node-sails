@@ -125,33 +125,31 @@ module.exports = {
 			{
 				console.log("TrackingID: " + data.trackingID);
 				recognizeImplementation(data.username, data.image, data.imageformat, data.trackingID, function(err, identity, image){
+									
 					if(err)
 					{
-						console.log(err);
+						//console.log(err);
 						//identity can contain trackingID
-						console.log(identity);
+						//console.log(identity);
 						socket.emit('RecError', identity);						
 					}					
 					else
 					{
 						socket.emit('identified', identity);
 					}
-					
 					if(image && image.path && image.format)
 					{
-						
-//						setTimeout(function(){
-							fs.unlink(image.path + image.format, function(err){
-								if(err){console.log("SERVER: Failed to delete " + image.path + image.format + " " + err);}
-								else{console.log("SERVER: Successfully deleted " + image.path + image.format)}
-							});
-							//Uncomment This
-							fs.unlink(image.path + '.pgm', function(err){
-								if(err){console.log("SERVER: Failed to delete " + image.path + '.pgm')}
-								else{console.log("SERVER: Successfully deleted " + image.path + '.pgm')}
-							});
-//						}, 1000);					
-					}
+											
+						setTimeout(function(){
+							var originalImage = image.path + image.format;
+							var pgmImage = image.path + ".pgm";							
+							//console.log(originalImage);
+							//console.log(pgmImage);
+							fs.unlink(originalImage.toString(), function(){});
+							fs.unlink(pgmImage.toString(), function(){});
+						}, 500);
+					}					
+
 				});	
 			}
 			else
@@ -206,7 +204,7 @@ function recognizeImplementation(username, image, imageformat, trackingID, callb
 			//for(int i = 0; i < # of faces; i++)
 			//{
 				console.log("SERVER LOG: Hash filename");
-				imageFileLocation = tmpPath + hashFilename();
+				var imageFileLocation = tmpPath + hashFilename();
 				console.log("SERVER LOG: Saving Image");							
 				fs.writeFile(imageFileLocation + imageformat, image, 'base64', function(err){
 					console.log("SERVER LOG: Go to recognizeHelper.");
