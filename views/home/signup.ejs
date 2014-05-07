@@ -1,0 +1,100 @@
+<div style="margin-top:220px">
+	<script src="js/jquery.min.js"></script>	
+	<link type="text/css" href="styles/semantic.min.css" rel="stylesheet">
+	<script src="js/semantic.min.js"></script>
+	
+	
+<div class="ui form segment">
+  <div class="ui error message">
+    <div class="header">We noticed some issues</div>
+  </div>
+  <div class="ui success message">
+    <div class="header">We have created you successfully!</div>
+  </div>	  
+  <div class="field">
+    <label>First Name</label>
+    <div class="ui left labeled icon input">
+      <input id="firstname" type="text" placeholder="First Name">
+      <i class="user icon"></i>
+      <div class="ui corner label">
+        <i class="icon asterisk"></i>
+      </div>
+    </div>
+  </div>
+  <div class="field">
+    <label>Last Name</label>
+    <div class="ui left labeled icon input">
+      <input id="lastname" type="text" placeholder="Last Name">
+      <i class="user icon"></i>
+      <div class="ui corner label">
+        <i class="icon asterisk"></i>
+      </div>
+    </div>
+  </div>
+  
+  <div class="field">
+    <label>Email</label>
+    <div class="ui left labeled icon input">
+      <input id="email" type="text" placeholder="Email Address">
+      <i class="mail icon"></i>
+      <div class="ui corner label">
+        <i class="icon asterisk"></i>
+      </div>
+    </div>
+  </div>
+    
+  <div id="signup" class="ui blue submit button">Sign up</div>
+</div>
+
+<script>
+$(document).ready(function(){
+	$(".error").hide();
+	$(".success").hide();	
+	$("#signup").click(function(){
+		var firstname = $("#firstname").val().trim();
+		var lastname = $("#lastname").val().trim();
+		var email = $("#email").val().trim();
+		if(firstname.length != 0 && lastname.length != 0 && email.length != 0)
+		{
+			var data = {
+				firstname:firstname,
+				lastname:lastname,
+				email:email,
+				username:"menglab"
+			}
+			$.post("/people/register", data)
+			.error(function(data){
+				$(".error").show();
+				setTimeout(function(){
+					$(".error").hide();
+				},2000);
+			})
+			.success(function(data, something, header){
+				if(parseInt(header.status) == 201)
+				{
+					$(".success").show();
+					setTimeout(function(){
+						$(".success").hide();
+					},2000);						
+				}
+				else
+				{
+					$(".error").show();
+					setTimeout(function(){
+						$(".error").hide();
+					},2000);					
+				}
+			});
+		}
+		else
+		{
+			$(".error").show();
+			setTimeout(function(){
+				$(".error").hide();
+			},2000);
+		}
+	});
+});
+</script>
+
+</div>

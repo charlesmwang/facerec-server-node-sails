@@ -46,7 +46,7 @@ module.exports = function(req, res, next) {
 			  {
 				  //Delete Expired Tokens if exist
 				  console.log("SERVER LOG: Found user and check for expired token if exists.");
-				  var now = new Date();				  
+				  var now = new Date();
 				  AccessToken.findByUserId(user.id)
 				  .done(function(err, tokens){
 					  if(err)
